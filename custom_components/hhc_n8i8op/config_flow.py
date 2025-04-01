@@ -1,29 +1,21 @@
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST
-from homeassistant.helpers import config_validation as cv
-import voluptuous as vol
+from homeassistant import config_entries
+from .const import DOMAIN  # Ensure DOMAIN is correctly defined in const.py
 
-@config_entries.HANDLERS.register(DOMAIN)
-class TCPRelayConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for TCP Relay."""
-    
-    def __init__(self):
-        self._host = None
+class HhcN8i8opConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for hhc_n8i8op."""
+
+    VERSION = 1
 
     async def async_step_user(self, user_input=None):
-        """Step where user inputs IP address."""
-        errors = {}
-
+        """Handle the user step for setting up the integration."""
         if user_input is not None:
-            self._host = user_input.get(CONF_HOST)
-            # You can perform any additional logic or validation here.
+            # Logic to handle user input (IP address, etc.)
+            return self.async_create_entry(
+                title="h8i8op Relay", data=user_input
+            )
 
-            return self.async_create_entry(title=self._host, data=user_input)
-
-        # Schema to request the IP address
-        schema = vol.Schema({
-            vol.Required(CONF_HOST): str,
-        })
-
-        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
-
+        # If no user input, show the form asking for the IP
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema({vol.Required("host"): str}),
+        )

@@ -1,81 +1,63 @@
-import asyncio
 import logging
 import socket
-import voluptuous as vol
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_platform
-from homeassistant.helpers.typing import HomeAssistantType
-from homeassistant.helpers.entity import Entity
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.const import CONF_HOST, CONF_PORT
 
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = 1  # Atualiza os estados a cada 1 segundo
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
-    """Set up the switches for the TCP Relay integration."""
+    """Set up switches for the TCP Relay."""
     host = entry.data[CONF_HOST]
-    port = entry.data.get(CONF_PORT, 5000)  # Default to port 5000 if not provided
+    port = entry.data.get(CONF_PORT, 5000)
 
-    # Debug log to confirm entry setup
-    _LOGGER.info("Setting up switches for device: %s", host)
+    device_name = host  # Default name is the IP
 
-    # Create the switch entities
-    switches = [RelaySwitch(hass, host, port, i) for i in range(8)]
-    
-    # Add switches to Home Assistant
+    # Create 8 relay entities
+    switches = [RelaySwitch(hass, device_name, host, port, i) for i in range(8)]
     async_add_entities(switches, True)
 
-    _LOGGER.info("Added switches: %s", [switch.name for switch in switches])
-
-    # Optionally, if your TCP communication requires an initial read, trigger it here
-    await hass.async_add_executor_job(connect_tcp_and_read, host, port)
-    
-    return True
-
-
 class RelaySwitch(SwitchEntity):
-    """Representa um relé no TCP Relay."""
+    """Representation of a TCP relay switch."""
 
     def __init__(self, hass, device_name, host, port, relay_index):
-        """Inicializa o switch."""
+        """Initialize the switch."""
         self._hass = hass
         self._device_name = device_name
         self._host = host
         self._port = port
         self._relay_index = relay_index
-        self._state = False  # Estado inicial
+        self._state = False  # Default state is off
 
     @property
     def name(self):
-        """Retorna o nome do switch."""
+        """Return the name of the switch."""
         return f"{self._device_name} Relay {self._relay_index + 1}"
 
     @property
     def unique_id(self):
-        """Retorna um ID único para o switch."""
+        """Return a unique ID for the switch."""
         return f"{self._host}_relay_{self._relay_index + 1}"
 
     @property
     def is_on(self):
-        """Retorna True se o relé estiver ligado."""
+        """Return True if the relay is on."""
         return self._state
 
     async def async_turn_on(self, **kwargs):
-        """Liga o relé."""
+        """Turn the relay on."""
         await self._send_command(1)
 
     async def async_turn_off(self, **kwargs):
-        """Desliga o relé."""
+        """Turn the relay off."""
         await self._send_command(0)
 
     async def _send_command(self, value):
-        """Envia comando para ligar/desligar o relé."""
+        """Send command to turn on/off the relay."""
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 sock.connect((self._host, self._port))
@@ -87,16 +69,8 @@ class RelaySwitch(SwitchEntity):
             _LOGGER.error("Error sending command to %s:%d - %s", self._host, self._port, e)
 
     async def async_update(self):
-        """Atualiza o estado do relé com base na resposta do dispositivo."""
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.connect((self._host, self._port))
-                sock.sendall(b"read")
-                response = sock.recv(1024).decode("utf-8").strip()
-
-                if response.startswith("relay"):
-                    relay_states = response[5:]  # Pega apenas os 8 dígitos finais
-                    self._state = relay_states[self._relay_index] == "1"
-
-        except Exception as e:
-            _LOGGER.error("Error reading relay state from %s:%d - %s", self._host, self._port, e)
+        """Update the relay state based on the latest response."""
+        state = self._hass.states.get(f"{DOMAIN}.{self._host}_relays")
+        if state and state.state.startswith("relay"):
+            relay_states = state.state[5:]  # Extract 8-digit state
+            self._state = relay_states[self._relay_index] == "1"

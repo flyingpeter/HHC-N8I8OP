@@ -16,19 +16,4 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     
     # Obtenha os parâmetros de configuração
     host = entry.data.get(CONF_HOST)
-    name = entry.data.get(CONF_NAME, "Unnamed Relay")
-    port = entry.data.get(CONF_PORT, 5000)
-
-    _LOGGER.debug(f"Host: {host}")
-    _LOGGER.debug(f"Name: {name}")
-    _LOGGER.debug(f"Port: {port}")
-
-    # Se o host estiver disponível, prossiga com a configuração
-    if host:
-        _LOGGER.debug("Valid host found, proceeding with TCP Relay setup...")
-        # Aqui você pode colocar o restante da lógica de configuração, como coordenadores ou switches
-        pass
-    else:
-        _LOGGER.warning("No host found in the configuration entry.")
-
-    return True
+    name = entry.data.get(CONF_NAME, "_

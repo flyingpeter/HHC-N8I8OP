@@ -38,42 +38,40 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
 
             while True:
                 try:
-                    # Test a different command (e.g., status) to see if the device returns anything new
+                    # Test a different command (e.g., read) to see if the device returns anything new
                     test_command = b"read\n"
                     _LOGGER.debug(f"Sending command: {test_command.decode('utf-8')}")
                     writer.write(test_command)
                     await writer.drain()  # Ensure the data is sent
 
                     # Receive the response using the reader (async)
-                    response = await asyncio.wait_for(reader.read(1024), timeout=10.0)  # 10-second timeout
-                    _LOGGER.debug("Raw response (before decode): %s", response)
-
                     try:
-                        response_text = response.decode("utf-8").strip()
-                        _LOGGER.info("Decoded response: %s", response_text)
-                    except UnicodeDecodeError as e:
-                        _LOGGER.error("Failed to decode response: %s", e)
-                        continue
+                        response = await asyncio.wait_for(reader.read(1024), timeout=15.0)  # Increased timeout
+                        _LOGGER.debug("Raw response (before decode): %s", response)
 
-                    if not response_text:
-                        _LOGGER.warning("Empty response from %s", host)
-                        break  # Reconnect if empty
+                        if not response:
+                            _LOGGER.warning("No response received from %s:%d", host, port)
+                            continue  # Retry if no data received
 
-                    _LOGGER.info("Received response: %s", response_text)
+                        try:
+                            response_text = response.decode("utf-8").strip()
+                            _LOGGER.info("Decoded response: %s", response_text)
+                        except UnicodeDecodeError as e:
+                            _LOGGER.error("Failed to decode response: %s", e)
+                            continue  # Skip this iteration if decoding fails
 
-                    # Check if the response starts with "relay"
-                    if response_text.startswith("relay"):
-                        relay_states = response_text[5:]  # Extract relay state part
-                        _LOGGER.info("Relay states: %s", relay_states)
+                        if response_text.startswith("relay"):
+                            relay_states = response_text[5:]  # Extract relay state part
+                            _LOGGER.info("Relay states: %s", relay_states)
 
-                        # Update the state of the relay in Home Assistant
-                        hass.states.async_set(f"{DOMAIN}.{host}_relays", relay_states)
+                            # Update the state of the relay in Home Assistant
+                            hass.states.async_set(f"{DOMAIN}.{host}_relays", relay_states)
+
+                    except asyncio.TimeoutError:
+                        _LOGGER.warning("Timeout waiting for response from %s:%d", host, port)
+                        continue  # Continue attempting to read if timeout occurs
 
                     await asyncio.sleep(0.5)  # Wait before next read
-
-                except asyncio.TimeoutError:
-                    _LOGGER.warning("Timeout waiting for response from %s", host)
-                    # Retry or handle the error
 
                 except (OSError, asyncio.CancelledError) as e:
                     _LOGGER.error("Error while communicating with %s:%d - %s", host, port, e)

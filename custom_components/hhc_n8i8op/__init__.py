@@ -4,6 +4,8 @@ import socket
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.device_registry import async_get as async_get_device_registry
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.const import CONF_HOST, CONF_PORT
 
 from .const import DOMAIN
@@ -77,6 +79,7 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.helpers.entity import DeviceInfo
 
 from .const import DOMAIN
 
@@ -88,13 +91,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     port = entry.data.get(CONF_PORT, 5000)
     device_name = host
     
-    switches = [RelaySwitch(hass, device_name, host, port, i) for i in range(8)]
+    device_info = DeviceInfo(
+        identifiers={(DOMAIN, host)},
+        name=device_name,
+        manufacturer="HHC",
+        model="TCP Relay",
+    )
+    
+    switches = [RelaySwitch(hass, device_name, host, port, i, device_info) for i in range(8)]
     async_add_entities(switches, True)
 
 class RelaySwitch(SwitchEntity):
     """Representação de um switch de relé TCP."""
 
-    def __init__(self, hass, device_name, host, port, relay_index):
+    def __init__(self, hass, device_name, host, port, relay_index, device_info):
         """Inicializa o switch."""
         self._hass = hass
         self._device_name = device_name
@@ -102,6 +112,7 @@ class RelaySwitch(SwitchEntity):
         self._port = port
         self._relay_index = relay_index
         self._state = False
+        self._attr_device_info = device_info
 
     @property
     def name(self):

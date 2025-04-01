@@ -2,7 +2,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import ConfigType
 
-DOMAIN = "tcp_relay"
+DOMAIN = "hhc_n8i8op"
 
 async def async_setup(hass: HomeAssistant, config: ConfigType):
     """Set up the integration via configuration.yaml (not used)."""

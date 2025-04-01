@@ -12,9 +12,10 @@ INTERVAL = 0.5  # Poll every 0.5s
 async def async_setup(hass: HomeAssistant, config: ConfigType):
     """Set up the integration via configuration.yaml (not used in this case)."""
     return True
-
+    
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up relay switches from a config entry."""
+    _LOGGER.debug("Setting up TCP relay switches")
     devices = entry.data.get("devices", [])
     
     if devices:
@@ -23,6 +24,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             ip_address = device.get("host")
             port = device.get("port", 5000)  # Default to 5000 if not provided
             if ip_address:
+                _LOGGER.debug(f"Creating coordinator for device: {ip_address}")
                 coordinator = TCPRelayCoordinator(hass, ip_address, port)
                 
                 # Create 8 switches (relay1 - relay8)
@@ -30,7 +32,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         async_add_entities(switches)
     
     return True
-
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Remove the integration."""
@@ -49,42 +50,22 @@ class TCPRelayCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Fetch relay states from the device."""
+        _LOGGER.debug(f"Attempting to read relay states from {self.ip}:{self.port}")
         try:
             response = await self.send_tcp_message("read")
+            _LOGGER.debug(f"Received response: {response}")
             if response.startswith("relay") and len(response) == 13:
                 self.states = response[5:]  # Extract last 8 characters
                 self.failure_count = 0  # Reset failure counter
+                _LOGGER.debug(f"Updated relay states: {self.states}")
             return self.states
         except Exception as e:
             self.failure_count += 1
             if self.failure_count >= 10:
+                _LOGGER.error(f"Device not responding for 10 cycles.")
                 raise UpdateFailed("Device not responding for 10 cycles.")
+            _LOGGER.error(f"TCP error: {e}")
             raise UpdateFailed(f"TCP error: {e}")
-
-    async def send_tcp_message(self, message):
-        """Send a TCP message and return the response."""
-        try:
-            reader, writer = await asyncio.open_connection(self.ip, self.port)
-            writer.write(message.encode())
-            await writer.drain()
-            response = await reader.read(1024)
-            writer.close()
-            await writer.wait_closed()
-            return response.decode().strip()
-        except Exception as e:
-            return f"Error: {e}"
-
-    async def set_relay_state(self, relay_index, state):
-        """Update the state of a specific relay."""
-        new_states = list(self.states)
-        new_states[relay_index] = "1" if state else "0"
-        new_state_str = "".join(new_states)
-
-        response = await self.send_tcp_message(f"all{new_state_str}")
-        if response.startswith("relay"):
-            self.states = new_state_str
-            await self.async_request_refresh()  # Force UI update
-
 
 class TCPRelaySwitch(SwitchEntity):
     """Representation of a single relay."""

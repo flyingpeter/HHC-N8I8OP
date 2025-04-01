@@ -40,7 +40,7 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
             while True:
                 try:
                     # Send the command to the device
-                    test_command = b"read\n"
+                    test_command = b"read"
                     _LOGGER.debug(f"Sending command: {test_command.decode('utf-8')}")
                     sock.sendall(test_command)
 

@@ -67,17 +67,31 @@ class RelaySwitch(SwitchEntity):
         """Turn the relay off."""
         await self._send_command(0)
 
-    async def _send_command(self, value):
-        """Send command to turn on/off the relay."""
+    async def _send_command(self, relay_index, value):
+        """Send the full 8-relay command to the TCP relay."""
         try:
+            # Fetch current state
+            state = self._hass.states.get(f"{DOMAIN}.{self._host}_relays")
+            if state and state.state.startswith("relay"):
+                relay_states = list(state.state[5:])  # Convert string to list
+            else:
+                relay_states = ["0"] * 8  # Default: all off
+    
+            # Update the specific relay
+            relay_states[relay_index] = str(value)
+    
+            # Create the full command string
+            command = f"all{''.join(relay_states)}".encode("utf-8")
+    
+            # Send command via TCP
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 sock.connect((self._host, self._port))
-                command = f"set{self._relay_index + 1}{value}".encode("utf-8")
                 sock.sendall(command)
                 _LOGGER.info("Sent command: %s", command.decode("utf-8"))
 
         except Exception as e:
             _LOGGER.error("Error sending command to %s:%d - %s", self._host, self._port, e)
+
 
     async def async_update(self):
         """Update the relay state based on the latest response."""

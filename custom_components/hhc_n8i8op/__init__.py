@@ -34,34 +34,28 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
     while True:
         try:
             _LOGGER.debug("Connecting to %s:%d...", host, port)
-
-            # Create a socket manually
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.setblocking(False)
-            await asyncio.get_event_loop().sock_connect(sock, (host, port))
-
-            # Wrap the socket with asyncio streams
-            reader, writer = await asyncio.open_connection(sock=sock)
-
-            _LOGGER.debug("Successfully connected to %s:%d", host, port)
+            reader, writer = await asyncio.open_connection(host, port)
 
             while True:
                 try:
-                    # Send the "read" command using the writer (async)
-                    _LOGGER.debug(f"Sending command: read")
-                    writer.write(b"read\n")
+                    # Test a different command (e.g., status) to see if the device returns anything new
+                    test_command = b"status\n"
+                    _LOGGER.debug(f"Sending command: {test_command.decode('utf-8')}")
+                    writer.write(test_command)
                     await writer.drain()  # Ensure the data is sent
 
                     # Receive the response using the reader (async)
                     response = await asyncio.wait_for(reader.read(1024), timeout=10.0)  # 10-second timeout
                     _LOGGER.debug("Raw response (before decode): %s", response)
 
-                    if not response:
+                    response_text = response.decode("utf-8").strip()
+                    _LOGGER.info("Decoded response: %s", response_text)
+
+                    if not response_text:
                         _LOGGER.warning("Empty response from %s", host)
                         break  # Reconnect if empty
 
-                    response_text = response.decode("utf-8").strip()
-                    _LOGGER.info("Decoded response: %s", response_text)
+                    _LOGGER.info("Received response: %s", response_text)
 
                     # Check if the response starts with "relay"
                     if response_text.startswith("relay"):
@@ -75,9 +69,11 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
 
                 except asyncio.TimeoutError:
                     _LOGGER.warning("Timeout waiting for response from %s", host)
+                    # Retry or handle the error
 
         except (OSError, asyncio.TimeoutError) as e:
             _LOGGER.error("Connection error to %s:%d - %s", host, port, e)
 
         # Wait before retrying connection
         await asyncio.sleep(5)
+

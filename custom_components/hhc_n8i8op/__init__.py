@@ -23,6 +23,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Start the TCP connection task
     hass.loop.create_task(connect_tcp_and_read(host, port))
 
+    hass.async_create_task(hass.config_entries.async_forward_entry_setup(entry, "switch"))
+    
     return True
 
 

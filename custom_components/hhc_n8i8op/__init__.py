@@ -18,20 +18,19 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up TCP Relay based on a config entry."""
     host = entry.data[CONF_HOST]
-    port = entry.data.get(CONF_PORT, 5000)
+    port = entry.data.get(CONF_PORT, 5000)  # Default to 5000 if no port provided
 
     # Store the connection task in hass.data
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = asyncio.create_task(connect_tcp_and_read(hass, host, port))
 
-    # Forward the setup to the switch platform
+    # Setup switches
     await hass.config_entries.async_forward_entry_setups(entry, "switch")
 
     return True
 
 async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
     """Keep TCP connection alive and read relay states every 0.5 seconds."""
-    heartbeat_failure_count = 0  # Counter for failed heartbeat responses
     while True:
         try:
             _LOGGER.debug("Connecting to %s:%d...", host, port)
@@ -48,11 +47,7 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
 
                 if not response_text:
                     _LOGGER.warning("Empty response from %s", host)
-                    heartbeat_failure_count += 1
-                    if heartbeat_failure_count >= 4:
-                        # After 4 failed heartbeats, mark the device as unavailable
-                        hass.states.async_set(f"{DOMAIN}.{host}_status", "unavailable")
-                    break  # Reconnect if empty or failed
+                    break  # Reconnect if empty
 
                 _LOGGER.info("Received response: %s", response_text)
 
@@ -60,18 +55,10 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
                     relay_states = response_text[5:]  # Extract 8-digit state
                     hass.states.async_set(f"{DOMAIN}.{host}_relays", relay_states)
 
-                    # Reset heartbeat failure count on successful response
-                    heartbeat_failure_count = 0
-                    # Reset the device status if it's back online
-                    if hass.states.get(f"{DOMAIN}.{host}_status") == "unavailable":
-                        hass.states.async_set(f"{DOMAIN}.{host}_status", "online")
-
                 await asyncio.sleep(0.5)  # Wait before next read
 
         except (OSError, asyncio.TimeoutError) as e:
             _LOGGER.error("Connection error to %s:%d - %s", host, port, e)
-            # Ensure we mark as unavailable if connection fails
-            hass.states.async_set(f"{DOMAIN}.{host}_status", "unavailable")
 
         # Wait before retrying connection
         await asyncio.sleep(5)

@@ -41,6 +41,12 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
                 writer.write(b"read\n")
                 await writer.drain()
 
+                try:
+                    response = await asyncio.wait_for(reader.read(1024), timeout=10.0)  # 10-second timeout
+                except asyncio.TimeoutError:
+                    _LOGGER.warning("Timeout waiting for response from %s", host)
+                    # Retry or handle the error
+
                 response = await reader.read(1024)
                 _LOGGER.debug("Raw response (before decode): %s", response)
                 response_text = response.decode("utf-8").strip()

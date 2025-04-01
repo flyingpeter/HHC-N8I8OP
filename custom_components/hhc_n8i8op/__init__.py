@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import socket
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
@@ -33,7 +34,14 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
     while True:
         try:
             _LOGGER.debug("Connecting to %s:%d...", host, port)
-            reader, writer = await asyncio.open_connection(host, port)
+
+            # Create a socket manually
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.setblocking(False)
+            await asyncio.get_event_loop().sock_connect(sock, (host, port))
+
+            # Wrap the socket with asyncio streams
+            reader, writer = await asyncio.open_connection(sock=sock)
 
             _LOGGER.debug("Successfully connected to %s:%d", host, port)
 

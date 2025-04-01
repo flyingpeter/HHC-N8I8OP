@@ -1,3 +1,6 @@
 THIS INTEGRATION IS IN BETA MODE
 
-Just add it and paste your HHC-N8I8OP IP Address
+Just add to your configuration.yaml:
+
+hhc_n8i8op:
+  host: 192.168.0.105

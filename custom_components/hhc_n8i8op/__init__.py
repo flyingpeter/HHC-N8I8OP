@@ -20,45 +20,34 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     host = entry.data[CONF_HOST]
     port = entry.data.get(CONF_PORT, 5000)  # Default to 5000 if no port provided
 
-    # Store the connection task in hass.data
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = asyncio.create_task(connect_tcp_and_read(hass, host, port))
+    # Start the TCP connection task
+    hass.loop.create_task(connect_tcp_and_read(hass, host, port))
 
-    # **CORREÇÃO AQUI**: Use async_forward_entry_setups corretamente
-    await hass.config_entries.async_forward_entry_setups(entry, {"switch"})
+    # Aguarda a configuração dos switches corretamente
+    await hass.config_entries.async_forward_entry_setup(entry, "switch")
 
     return True
 
 async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
-    """Keep TCP connection alive and read relay states every 0.5 seconds."""
+    """Connect to TCP server every 0.5 seconds and send 'read'."""
     while True:
         try:
-            _LOGGER.debug("Connecting to %s:%d...", host, port)
-            reader, writer = await asyncio.open_connection(host, port)
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.connect((host, port))
 
-            while True:
                 # Send the "read" command
-                writer.write(b"read\n")
-                await writer.drain()
+                sock.sendall(b"read")
 
-                # Receive response
-                response = await reader.read(1024)
-                response_text = response.decode("utf-8").strip()
+                # Receive the response
+                response = sock.recv(1024).decode("utf-8").strip()
 
-                if not response_text:
-                    _LOGGER.warning("Empty response from %s", host)
-                    break  # Reconnect if empty
-
-                _LOGGER.info("Received response: %s", response_text)
-
-                if response_text.startswith("relay"):
-                    relay_states = response_text[5:]  # Extract 8-digit state
+                # Log and update state
+                _LOGGER.info("Received response: %s", response)
+                if response.startswith("relay"):
+                    relay_states = response[5:]  # Extract 8-digit state
                     hass.states.async_set(f"{DOMAIN}.{host}_relays", relay_states)
 
-                await asyncio.sleep(0.5)  # Wait before next read
+        except Exception as e:
+            _LOGGER.error("Error connecting to %s:%d - %s", host, port, e)
 
-        except (OSError, asyncio.TimeoutError) as e:
-            _LOGGER.error("Connection error to %s:%d - %s", host, port, e)
-
-        # Wait before retrying connection
-        await asyncio.sleep(5)
+        await asyncio.sleep(0.5)  # Wait for 0.5 seconds before the next request

@@ -1,10 +1,10 @@
 import asyncio
 import logging
 import socket
-
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_HOST, CONF_PORT  # Add this import
 
 from .const import DOMAIN
 
@@ -16,7 +16,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up TCP Relay based on a config entry."""
-    host = entry.data[CONF_HOST]
+    host = entry.data[CONF_HOST]  # Now correctly using CONF_HOST
     port = entry.data.get(CONF_PORT, 5000)  # Default to 5000 if no port provided
 
     # Store the connection task in hass.data

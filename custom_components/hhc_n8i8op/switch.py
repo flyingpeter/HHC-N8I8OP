@@ -4,7 +4,7 @@ import socket
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.const import CONF_HOST, CONF_PORT
 
 from .const import DOMAIN
@@ -19,8 +19,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     device_name = host  # Default name is the IP
 
     # Create 8 relay entities
+    _LOGGER.debug("Creating relay switches for host %s with port %d", host, port)
     switches = [RelaySwitch(hass, device_name, host, port, i) for i in range(8)]
+    
+    # Log the created switches
+    _LOGGER.debug("Created relay switches: %s", [switch.name for switch in switches])
+
+    # Add the switches to Home Assistant
     async_add_entities(switches, True)
+    _LOGGER.debug("Switch entities added to Home Assistant.")
 
 class RelaySwitch(SwitchEntity):
     """Representation of a TCP relay switch."""

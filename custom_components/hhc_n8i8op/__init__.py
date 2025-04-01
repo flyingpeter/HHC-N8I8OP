@@ -31,6 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
     """Keep TCP connection alive and read relay states every 0.5 seconds."""
+    heartbeat_failure_count = 0  # Counter for failed heartbeat responses
     while True:
         try:
             _LOGGER.debug("Connecting to %s:%d...", host, port)
@@ -47,7 +48,11 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
 
                 if not response_text:
                     _LOGGER.warning("Empty response from %s", host)
-                    break  # Reconnect if empty
+                    heartbeat_failure_count += 1
+                    if heartbeat_failure_count >= 4:
+                        # After 4 failed heartbeats, mark the device as unavailable
+                        hass.states.async_set(f"{DOMAIN}.{host}_status", "unavailable")
+                    break  # Reconnect if empty or failed
 
                 _LOGGER.info("Received response: %s", response_text)
 
@@ -55,10 +60,18 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
                     relay_states = response_text[5:]  # Extract 8-digit state
                     hass.states.async_set(f"{DOMAIN}.{host}_relays", relay_states)
 
+                    # Reset heartbeat failure count on successful response
+                    heartbeat_failure_count = 0
+                    # Reset the device status if it's back online
+                    if hass.states.get(f"{DOMAIN}.{host}_status") == "unavailable":
+                        hass.states.async_set(f"{DOMAIN}.{host}_status", "online")
+
                 await asyncio.sleep(0.5)  # Wait before next read
 
         except (OSError, asyncio.TimeoutError) as e:
             _LOGGER.error("Connection error to %s:%d - %s", host, port, e)
+            # Ensure we mark as unavailable if connection fails
+            hass.states.async_set(f"{DOMAIN}.{host}_status", "unavailable")
 
         # Wait before retrying connection
         await asyncio.sleep(5)

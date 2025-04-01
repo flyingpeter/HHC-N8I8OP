@@ -55,7 +55,9 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
 
                 if response_text.startswith("relay"):
                     relay_states = response_text[5:]  # Extract 8-digit state
-                    hass.states.async_set(f"{DOMAIN}.{host}_relays", relay_states)
+                    # Update states for each relay entity
+                    for i, state in enumerate(relay_states, 1):
+                        hass.states.async_set(f"{DOMAIN}.{host}_relay_{i}", state)
 
                 await asyncio.sleep(0.5)  # Wait before next read
 
@@ -64,6 +66,7 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
 
         # Wait before retrying connection
         await asyncio.sleep(5)
+
 
 class TCPRelayDevice:
     """Representation of a TCP relay device."""
@@ -122,10 +125,20 @@ class TCPRelaySwitch(Entity):
     async def async_turn_on(self):
         self._state = True
         # Implement the code to turn on the relay via TCP
+        await self.update_state()
 
     async def async_turn_off(self):
         self._state = False
         # Implement the code to turn off the relay via TCP
+        await self.update_state()
+
+    async def update_state(self):
+        """Update the state of the switch based on the current state of the relay."""
+        # You can use TCP commands to fetch the relay state and update it accordingly
+        _LOGGER.debug(f"Updating state for {self.name}")
+        self._state = True if self._state else False
+        # Example: Fetch relay state here and set `self._state` accordingly
+        self.async_write_ha_state()
 
 
 async def async_forward_switches(hass: HomeAssistant, entry: ConfigEntry, host: str):

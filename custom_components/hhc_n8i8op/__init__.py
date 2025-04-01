@@ -1,11 +1,9 @@
 import asyncio
 import logging
 import socket
-import time
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.config_entries import ConfigEntry
 
 from .const import DOMAIN
@@ -30,7 +28,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     return True
 
-def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
+async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
     """Keep TCP connection alive and read relay states every 0.5 seconds."""
     while True:
         try:
@@ -69,7 +67,7 @@ def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
                         # Update the state of the relay in Home Assistant
                         hass.states.async_set(f"{DOMAIN}.{host}_relays", relay_states)
 
-                    time.sleep(0.5)  # Wait before next read
+                    await asyncio.sleep(0.5)  # Wait before next read (non-blocking)
 
                 except socket.timeout:
                     _LOGGER.warning("Timeout waiting for response from %s", host)
@@ -86,4 +84,4 @@ def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
 
         # Wait before retrying connection
         _LOGGER.info("Waiting before retrying connection to %s:%d...", host, port)
-        time.sleep(5)
+        await asyncio.sleep(5)  # Non-blocking wait before retry

@@ -1,4 +1,3 @@
-
 import socket
 import asyncio
 from homeassistant.components.switch import SwitchEntity

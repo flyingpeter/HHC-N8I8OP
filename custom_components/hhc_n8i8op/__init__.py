@@ -1,10 +1,9 @@
+from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
-from .const import DOMAIN  # Import DOMAIN from the const module
+from .const import DOMAIN
 
-def setup(hass: HomeAssistant, config: ConfigType):
-    # Example state setting
-    hass.states.set("hello_state.world", "Paulus")
-
-    # Return boolean to indicate that initialization was successful
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up the HHC N8I8OP TCP Relay integration."""
+    # Initialization code here if needed, e.g., initializing your relay hardware
     return True

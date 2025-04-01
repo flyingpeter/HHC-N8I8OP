@@ -1,10 +1,9 @@
 import logging
-import asyncio
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 # Set up logging
 _LOGGER = logging.getLogger(__name__)
@@ -22,6 +21,7 @@ class DeviceConfigCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Log the device configuration every 5 seconds."""
+        _LOGGER.debug("Updating device configuration...")
         for device in self.devices:
             host = device.get(CONF_HOST)
             name = device.get(CONF_NAME)
@@ -31,22 +31,24 @@ class DeviceConfigCoordinator(DataUpdateCoordinator):
 
         return self.devices  # Return the devices list to fulfill the coordinator's requirements
 
-
 async def async_setup(hass: HomeAssistant, config: ConfigType):
-    """Set up the integration via configuration.yaml (not used in this case)."""
-    _LOGGER.debug("Setting up the integration")
+    """Set up the integration via configuration.yaml."""
+    _LOGGER.debug("Setting up the integration (async_setup)...")
     return True
-
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up the integration based on the config entry."""
+    _LOGGER.debug("Setting up entry for hhc_n8i8op...")
+
     # Retrieve the list of devices from configuration.yaml
     devices = entry.data.get("devices", [])
-    
+    _LOGGER.debug(f"Found devices in config: {devices}")
+
     # Create a coordinator for the devices
     coordinator = DeviceConfigCoordinator(hass, devices)
-    
+
     # Start the coordinator to begin periodic updates
+    _LOGGER.debug("Starting coordinator for device configuration...")
     await coordinator.async_refresh()
 
     return True

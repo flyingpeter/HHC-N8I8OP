@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import socket
+import time
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
@@ -29,57 +30,60 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     return True
 
-async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
+def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
     """Keep TCP connection alive and read relay states every 0.5 seconds."""
     while True:
         try:
             _LOGGER.debug("Connecting to %s:%d...", host, port)
-            reader, writer = await asyncio.open_connection(host, port)
+            # Create a socket and connect
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((host, port))
 
             while True:
                 try:
-                    # Test a different command (e.g., read) to see if the device returns anything new
+                    # Send the command to the device
                     test_command = b"read\n"
                     _LOGGER.debug(f"Sending command: {test_command.decode('utf-8')}")
-                    writer.write(test_command)
-                    await writer.drain()  # Ensure the data is sent
+                    sock.sendall(test_command)
 
-                    # Receive the response using the reader (async)
+                    # Receive the response from the device
+                    sock.settimeout(10)  # Set a timeout of 10 seconds for blocking socket read
+                    response = sock.recv(1024)  # Adjust buffer size as needed
+                    _LOGGER.debug("Raw response (before decode): %s", response)
+
+                    if not response:
+                        _LOGGER.warning("Empty response from %s", host)
+                        break  # Reconnect if empty response
+
                     try:
-                        response = await asyncio.wait_for(reader.read(1024), timeout=15.0)  # Increased timeout
-                        _LOGGER.debug("Raw response (before decode): %s", response)
+                        response_text = response.decode("utf-8").strip()
+                        _LOGGER.info("Decoded response: %s", response_text)
+                    except UnicodeDecodeError as e:
+                        _LOGGER.error("Failed to decode response: %s", e)
+                        continue
 
-                        if not response:
-                            _LOGGER.warning("No response received from %s:%d", host, port)
-                            continue  # Retry if no data received
+                    if response_text.startswith("relay"):
+                        relay_states = response_text[5:]  # Extract relay state part
+                        _LOGGER.info("Relay states: %s", relay_states)
 
-                        try:
-                            response_text = response.decode("utf-8").strip()
-                            _LOGGER.info("Decoded response: %s", response_text)
-                        except UnicodeDecodeError as e:
-                            _LOGGER.error("Failed to decode response: %s", e)
-                            continue  # Skip this iteration if decoding fails
+                        # Update the state of the relay in Home Assistant
+                        hass.states.async_set(f"{DOMAIN}.{host}_relays", relay_states)
 
-                        if response_text.startswith("relay"):
-                            relay_states = response_text[5:]  # Extract relay state part
-                            _LOGGER.info("Relay states: %s", relay_states)
+                    time.sleep(0.5)  # Wait before next read
 
-                            # Update the state of the relay in Home Assistant
-                            hass.states.async_set(f"{DOMAIN}.{host}_relays", relay_states)
+                except socket.timeout:
+                    _LOGGER.warning("Timeout waiting for response from %s", host)
+                    continue  # Retry if timeout occurs
 
-                    except asyncio.TimeoutError:
-                        _LOGGER.warning("Timeout waiting for response from %s:%d", host, port)
-                        continue  # Continue attempting to read if timeout occurs
-
-                    await asyncio.sleep(0.5)  # Wait before next read
-
-                except (OSError, asyncio.CancelledError) as e:
+                except (socket.error, OSError) as e:
                     _LOGGER.error("Error while communicating with %s:%d - %s", host, port, e)
                     break  # Break out of the inner loop to reconnect
 
-        except (OSError, asyncio.TimeoutError) as e:
+            sock.close()  # Close the socket after use
+
+        except (socket.error, OSError) as e:
             _LOGGER.error("Connection error to %s:%d - %s", host, port, e)
 
         # Wait before retrying connection
         _LOGGER.info("Waiting before retrying connection to %s:%d...", host, port)
-        await asyncio.sleep(5)
+        time.sleep(5)

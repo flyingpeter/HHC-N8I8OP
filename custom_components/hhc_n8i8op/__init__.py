@@ -1,10 +1,10 @@
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
-
-DOMAIN = "hhc_n8i8op"
+from .const import DOMAIN  # Import DOMAIN from the const module
 
 def setup(hass: HomeAssistant, config: ConfigType):
+    # Example state setting
     hass.states.set("hello_state.world", "Paulus")
 
-    # Return boolean to indicate that initialization was successful.
+    # Return boolean to indicate that initialization was successful
     return True

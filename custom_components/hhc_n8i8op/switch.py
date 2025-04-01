@@ -15,37 +15,45 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     host = entry.data[CONF_HOST]
     port = entry.data.get(CONF_PORT, 5000)
 
-    device_name = host  # Default name is the IP
+    # Criar a estrutura do dispositivo
+    device_info = DeviceInfo(
+        identifiers={(DOMAIN, host)},  # Identificador único do dispositivo
+        name=f"TCP Relay ({host})",    # Nome do dispositivo
+        manufacturer="HHC",
+        model="TCP Relay",
+        sw_version="1.0",              # Se souber a versão do firmware
+    )
 
-    # Create 8 relay entities
-    switches = [RelaySwitch(hass, device_name, host, port, i) for i in range(8)]
+    # Criar 8 switches associados a este dispositivo
+    switches = [RelaySwitch(hass, host, port, i, device_info) for i in range(8)]
     async_add_entities(switches, True)
 
-class RelaySwitch(SwitchEntity):
-    """Representation of a TCP relay switch."""
 
-    def __init__(self, hass, device_name, host, port, relay_index):
-        """Initialize the switch."""
+class RelaySwitch(SwitchEntity):
+    """Representação de um switch de relé TCP."""
+
+    def __init__(self, hass, host, port, relay_index, device_info):
+        """Inicializa o switch."""
         self._hass = hass
-        self._device_name = device_name
         self._host = host
         self._port = port
         self._relay_index = relay_index
-        self._state = False  # Default state is off
+        self._state = False
+        self._attr_device_info = device_info  # Associa a entidade ao dispositivo
 
     @property
     def name(self):
-        """Return the name of the switch."""
-        return f"{self._device_name} Relay {self._relay_index + 1}"
+        """Retorna o nome do switch."""
+        return f"Relay {self._relay_index + 1} ({self._host})"
 
     @property
     def unique_id(self):
-        """Return a unique ID for the switch."""
+        """Retorna um ID único para o switch."""
         return f"{self._host}_relay_{self._relay_index + 1}"
 
     @property
     def is_on(self):
-        """Return True if the relay is on."""
+        """Retorna True se o relé estiver ligado."""
         return self._state
 
     async def async_turn_on(self, **kwargs):

@@ -21,7 +21,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         identifiers={(DOMAIN, host)},  # Unique identifier for the device
         name=f"TCP Relay ({host})",    # Device name
         manufacturer="HHC",
-        model="N8I8OP",
+        model="TCP Relay",
         sw_version="1.0",              # Firmware version (if available)
     )
 
@@ -60,39 +60,34 @@ class RelaySwitch(SwitchEntity):
         return self._state
 
     async def async_turn_on(self, **kwargs):
-        """Turn the relay on and update state."""
-        await self._send_command(self._relay_index, 1)  # ✅ Fix: Pass relay_index
+        """Turn the relay on."""
+        await self._send_command(1)
 
     async def async_turn_off(self, **kwargs):
-        """Turn the relay off and update state."""
-        await self._send_command(self._relay_index, 0)  # ✅ Fix: Pass relay_index
+        """Turn the relay off."""
+        await self._send_command(0)
 
-
-    async def _send_command(self, relay_index, value):
-        """Send the full 8-relay command to the TCP relay."""
+    async def _send_command(self, value):
+        """Send command to turn on/off the relay."""
         try:
-            # Fetch current state
-            state = self._hass.states.get(f"{DOMAIN}.{self._host}_relays")
-            if state and state.state.startswith("relay"):
-                relay_states = list(state.state[5:])  # Convert string to list
-            else:
-                relay_states = ["0"] * 8  # Default: all off
-    
-            # Update the specific relay
-            relay_states[relay_index] = str(value)
-    
-            # Create the full command string
-            command = f"all{''.join(relay_states)}".encode("utf-8")
-    
-            # Send command via TCP
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.connect((self._host, self._port))
+                sock.connect((self._host, self._port
+                state = self._hass.states.get(f"{DOMAIN}.{self._host}_relays")
+                if state and state.state.startswith("relay"):
+                    relay_states = list(state.state[5:])  # Convert string to list
+                else:
+                    relay_states = ["0"] * 8  # Default: all off
+        
+                # Update the specific relay
+                relay_states[relay_index] = str(value)
+        
+                # Create the full command string
+                command = f"all{''.join(relay_states)}".encode("utf-8")             
                 sock.sendall(command)
                 _LOGGER.info("Sent command: %s", command.decode("utf-8"))
 
         except Exception as e:
             _LOGGER.error("Error sending command to %s:%d - %s", self._host, self._port, e)
-
 
     async def async_update(self):
         """Update the relay state based on the latest response."""
@@ -100,4 +95,3 @@ class RelaySwitch(SwitchEntity):
         if state and state.state.startswith("relay"):
             relay_states = state.state[5:]  # Extract relay states
             self._state = relay_states[self._relay_index] == "1"
-

@@ -25,7 +25,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = asyncio.create_task(connect_tcp_and_read(hass, host, port))
 
     # Setup switches
-    await hass.config_entries.async_forward_entry_setups(entry, "switch")
+    await hass.config_entries.async_forward_entry_setups(entry, ["switch"])
 
     return True
 

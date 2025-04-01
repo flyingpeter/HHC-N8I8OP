@@ -1,107 +1,76 @@
-import asyncio
 import logging
 import socket
 
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.core import callback
-from homeassistant.helpers.entity import Entity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.const import CONF_HOST, CONF_PORT
 
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-TIMEOUT = 2  # Tempo limite para resposta do dispositivo
-CHECK_INTERVAL = 0.5  # Tempo entre leituras do dispositivo
-MAX_FAILED_READS = 10  # Número máximo de falhas antes de marcar como indisponível
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
+    """Set up switches for the TCP Relay."""
+    host = entry.data[CONF_HOST]
+    port = entry.data.get(CONF_PORT, 5000)
 
-class RelayBoardSwitch(SwitchEntity):
-    """Representa um relé na placa de relés controlada via TCP."""
+    device_name = host  # Default name is the IP
 
-    def __init__(self, hass, name, ip, relay_id):
-        """Inicializa o relé."""
+    # Create 8 relay entities
+    switches = [RelaySwitch(hass, device_name, host, port, i) for i in range(8)]
+    async_add_entities(switches, True)
+
+class RelaySwitch(SwitchEntity):
+    """Representation of a TCP relay switch."""
+
+    def __init__(self, hass, device_name, host, port, relay_index):
+        """Initialize the switch."""
         self._hass = hass
-        self._name = name
-        self._ip = ip
-        self._relay_id = relay_id
-        self._state = False
-        self._available = True
-        self._failed_reads = 0
+        self._device_name = device_name
+        self._host = host
+        self._port = port
+        self._relay_index = relay_index
+        self._state = False  # Default state is off
 
     @property
     def name(self):
-        """Retorna o nome do relé."""
-        return self._name
+        """Return the name of the switch."""
+        return f"{self._device_name} Relay {self._relay_index + 1}"
 
     @property
     def unique_id(self):
-        """Garante um ID único baseado no IP e no número do relé."""
-        return f"relayboard_{self._ip.replace('.', '_')}_{self._relay_id}"
+        """Return a unique ID for the switch."""
+        return f"{self._host}_relay_{self._relay_index + 1}"
 
     @property
     def is_on(self):
-        """Retorna True se o relé estiver ligado."""
+        """Return True if the relay is on."""
         return self._state
 
-    @property
-    def available(self):
-        """Retorna True se o dispositivo estiver acessível."""
-        return self._available
-
     async def async_turn_on(self, **kwargs):
-        """Liga o relé."""
-        if await self._send_command("ON"):
-            self._state = True
-            self.async_write_ha_state()
+        """Turn the relay on."""
+        await self._send_command(1)
 
     async def async_turn_off(self, **kwargs):
-        """Desliga o relé."""
-        if await self._send_command("OFF"):
-            self._state = False
-            self.async_write_ha_state()
+        """Turn the relay off."""
+        await self._send_command(0)
 
-    async def _send_command(self, command):
-        """Envia um comando TCP para a placa de relés."""
+    async def _send_command(self, value):
+        """Send command to turn on/off the relay."""
         try:
-            reader, writer = await asyncio.open_connection(self._ip, 23)
-            writer.write(f"{command}\n".encode())
-            await writer.drain()
-            response = await reader.read(100)
-            writer.close()
-            await writer.wait_closed()
-            _LOGGER.debug("Recebido: %s", response.decode().strip())
-
-            return response.decode().strip() == "OK"
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.connect((self._host, self._port))
+                command = f"set{self._relay_index + 1}{value}".encode("utf-8")
+                sock.sendall(command)
+                _LOGGER.info("Sent command: %s", command.decode("utf-8"))
 
         except Exception as e:
-            _LOGGER.error("Erro ao comunicar com %s: %s", self._ip, str(e))
-            self._failed_reads += 1
-
-            if self._failed_reads >= MAX_FAILED_READS:
-                self._available = False
-                self.async_write_ha_state()
-            
-            return False
+            _LOGGER.error("Error sending command to %s:%d - %s", self._host, self._port, e)
 
     async def async_update(self):
-        """Consulta o estado do relé periodicamente."""
-        try:
-            reader, writer = await asyncio.open_connection(self._ip, 23)
-            writer.write(f"STATUS {self._relay_id}\n".encode())
-            await writer.drain()
-            response = await reader.read(100)
-            writer.close()
-            await writer.wait_closed()
-
-            estado_atual = response.decode().strip()
-            self._state = estado_atual == "ON"
-            self._available = True
-            self._failed_reads = 0
-            self.async_write_ha_state()
-
-        except Exception:
-            _LOGGER.warning("Falha ao ler estado de %s", self._ip)
-            self._failed_reads += 1
-
-            if self._failed_reads >= MAX_FAILED_READS:
-                self._available = False
-                self.async_write_ha_state()
+        """Update the relay state based on the latest response."""
+        state = self._hass.states.get(f"{DOMAIN}.{self._host}_relays")
+        if state and state.state.startswith("relay"):
+            relay_states = state.state[5:]  # Extract 8-digit state
+            self._state = relay_states[self._relay_index] == "1"

@@ -41,8 +41,10 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
                 writer.write(b"read\n")
                 await writer.drain()
 
-                # Wait for a short time to ensure the device processes the request
-                await asyncio.sleep(0.5)
+                response = await reader.read(1024)
+                _LOGGER.debug("Raw response (before decode): %s", response)
+                response_text = response.decode("utf-8").strip()
+                _LOGGER.info("Decoded response: %s", response_text)
 
                 # Receive the response using the reader (async)
                 response = await reader.read(1024)

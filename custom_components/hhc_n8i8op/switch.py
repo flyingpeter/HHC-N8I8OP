@@ -17,17 +17,27 @@ _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = 1  # Atualiza os estados a cada 1 segundo
 
-async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry, async_add_entities):
-    """Configuração dos switches do TCP Relay."""
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
+    """Set up the switches for the TCP Relay integration."""
     host = entry.data[CONF_HOST]
-    port = entry.data.get(CONF_PORT, 5000)  # Porta padrão 5000
+    port = entry.data.get(CONF_PORT, 5000)  # Default to port 5000 if not provided
 
-    # Criar a entidade principal do dispositivo
-    device_name = host  # Nome padrão é o IP
+    # Debug log to confirm entry setup
+    _LOGGER.info("Setting up switches for device: %s", host)
 
-    # Criar 8 entidades de relé
-    switches = [RelaySwitch(hass, device_name, host, port, i) for i in range(8)]
+    # Create the switch entities
+    switches = [RelaySwitch(hass, host, port, i) for i in range(8)]
+    
+    # Add switches to Home Assistant
     async_add_entities(switches, True)
+
+    _LOGGER.info("Added switches: %s", [switch.name for switch in switches])
+
+    # Optionally, if your TCP communication requires an initial read, trigger it here
+    await hass.async_add_executor_job(connect_tcp_and_read, host, port)
+    
+    return True
+
 
 class RelaySwitch(SwitchEntity):
     """Representa um relé no TCP Relay."""

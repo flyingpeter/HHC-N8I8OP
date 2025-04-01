@@ -12,11 +12,10 @@ class HhcN8i8OpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         """Handle the user step."""
-        # If user_input is not None, this means the user clicked submit
         if user_input:
-            # Example: Save user input and complete the flow
             host = user_input["host"]
-            port = user_input["port"]
+            # Use the provided port, or default to 5000 if not provided
+            port = user_input.get("port", 5000)
 
             # Add entry to Home Assistant
             return self.async_create_entry(
@@ -24,7 +23,6 @@ class HhcN8i8OpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data={"host": host, "port": port},
             )
 
-        # Ask user for host and port
         return self.async_show_form(
             step_id="user", data_schema=self._get_schema()
         )
@@ -37,6 +35,6 @@ class HhcN8i8OpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return vol.Schema(
             {
                 vol.Required("host"): cv.string,
-                vol.Required("port"): cv.port,
+                vol.Optional("port", default=5000): cv.port,  # Default port set here
             }
         )

@@ -4,6 +4,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+import logging
 
 # Set up logging
 _LOGGER = logging.getLogger(__name__)
@@ -37,26 +38,22 @@ async def async_setup(hass: HomeAssistant, config: ConfigType):
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
-    """Set up the integration based on the config entry."""
-    _LOGGER.debug("Setting up entry for hhc_n8i8op...")
+    """Set up relay switches from a config entry."""
+    
+    # Obtenha os parâmetros de configuração
+    host = entry.data.get(CONF_HOST)
+    name = entry.data.get(CONF_NAME, "Unnamed Relay")
+    port = entry.data.get(CONF_PORT, 5000)
 
-    # Retrieve the list of devices from configuration.yaml
-    devices = entry.data.get("devices", [])
-    _LOGGER.debug(f"Found devices in config: {devices}")
-
-    # Log each device's details to ensure they're being read
-    for device in devices:
-        host = device.get(CONF_HOST)
-        name = device.get(CONF_NAME)
-        port = device.get(CONF_PORT)
-        _LOGGER.info(f"Device configured: Name={name}, Host={host}, Port={port}")
-
-    # Create a coordinator for the devices
-    coordinator = DeviceConfigCoordinator(hass, devices)
-
-    # Start the coordinator to begin periodic updates
-    _LOGGER.debug("Starting coordinator for device configuration...")
-    await coordinator.async_refresh()
-
+    # Imprimir os parâmetros no log
+    _LOGGER.debug("Setting up TCP Relay with the following configuration:")
+    _LOGGER.debug(f"Host: {host}")
+    _LOGGER.debug(f"Name: {name}")
+    _LOGGER.debug(f"Port: {port}")
+    
+    # Agora faça o resto da configuração
+    if host:
+        # Seu código para configurar os switches
+        pass
+    
     return True
-

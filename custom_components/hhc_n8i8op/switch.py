@@ -12,14 +12,23 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up switches for the TCP Relay."""
-    host = entry.data[CONF_HOST]
-    port = entry.data.get(CONF_PORT, 5000)
+    try:
+        host = entry.data[CONF_HOST]
+        port = entry.data.get(CONF_PORT, 5000)
+        device_name = host
+        
+        device_info = DeviceInfo(
+            identifiers={(DOMAIN, host)},
+            name=device_name,
+            manufacturer="HHC",
+            model="TCP Relay",
+        )
+        
+        switches = [RelaySwitch(hass, device_name, host, port, i, device_info) for i in range(8)]
+        async_add_entities(switches, True)
+    except Exception as e:
+        _LOGGER.error("Erro ao configurar switches: %s", e)
 
-    device_name = host  # Default name is the IP
-
-    # Create 8 relay entities
-    switches = [RelaySwitch(hass, device_name, host, port, i) for i in range(8)]
-    async_add_entities(switches, True)
 
 class RelaySwitch(SwitchEntity):
     """Representation of a TCP relay switch."""

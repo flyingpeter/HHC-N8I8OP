@@ -44,6 +44,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     devices = entry.data.get("devices", [])
     _LOGGER.debug(f"Found devices in config: {devices}")
 
+    # Log each device's details to ensure they're being read
+    for device in devices:
+        host = device.get(CONF_HOST)
+        name = device.get(CONF_NAME)
+        port = device.get(CONF_PORT)
+        _LOGGER.info(f"Device configured: Name={name}, Host={host}, Port={port}")
+
     # Create a coordinator for the devices
     coordinator = DeviceConfigCoordinator(hass, devices)
 
@@ -52,3 +59,4 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     await coordinator.async_refresh()
 
     return True
+

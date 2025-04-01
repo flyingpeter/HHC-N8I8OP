@@ -15,15 +15,22 @@ async def async_setup(hass: HomeAssistant, config: ConfigType):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up relay switches from a config entry."""
-    ip_address = entry.data.get(CONF_HOST)
-    if ip_address:
-        coordinator = TCPRelayCoordinator(hass, ip_address)
-
-        # Create 8 switches (relay1 - relay8)
-        switches = [TCPRelaySwitch(coordinator, i) for i in range(8)]
+    devices = entry.data.get("devices", [])
+    
+    if devices:
+        switches = []
+        for device in devices:
+            ip_address = device.get("host")
+            port = device.get("port", 5000)  # Default to 5000 if not provided
+            if ip_address:
+                coordinator = TCPRelayCoordinator(hass, ip_address, port)
+                
+                # Create 8 switches (relay1 - relay8)
+                switches.extend([TCPRelaySwitch(coordinator, i) for i in range(8)])
         async_add_entities(switches)
     
     return True
+
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Remove the integration."""

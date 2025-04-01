@@ -36,14 +36,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Remove the integration."""
     return await hass.config_entries.async_forward_entry_unload(entry, "switch")
 
-
 class TCPRelayCoordinator(DataUpdateCoordinator):
     """Handles communication with the relay device."""
 
-    def __init__(self, hass, ip):
+    def __init__(self, hass, ip, port=5000):
         """Initialize the TCP relay handler."""
         super().__init__(hass, None, name=f"TCP Relay {ip}", update_interval=INTERVAL)
         self.ip = ip
+        self.port = port
         self.states = "00000000"  # Default all OFF
         self.failure_count = 0  # Track consecutive failures
 
@@ -64,7 +64,7 @@ class TCPRelayCoordinator(DataUpdateCoordinator):
     async def send_tcp_message(self, message):
         """Send a TCP message and return the response."""
         try:
-            reader, writer = await asyncio.open_connection(self.ip, 5000)
+            reader, writer = await asyncio.open_connection(self.ip, self.port)
             writer.write(message.encode())
             await writer.drain()
             response = await reader.read(1024)
@@ -84,6 +84,7 @@ class TCPRelayCoordinator(DataUpdateCoordinator):
         if response.startswith("relay"):
             self.states = new_state_str
             await self.async_request_refresh()  # Force UI update
+
 
 class TCPRelaySwitch(SwitchEntity):
     """Representation of a single relay."""

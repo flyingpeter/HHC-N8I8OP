@@ -16,16 +16,24 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the HHC N8I8OP TCP Relay integration."""
     return True
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up TCP Relay based on a config entry."""
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
+    """Set up switches for the TCP Relay."""
+    _LOGGER.info("Configurando switches para %s", entry.data[CONF_HOST])
+    
     host = entry.data[CONF_HOST]
     port = entry.data.get(CONF_PORT, 5000)
+    device_name = host
 
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = asyncio.create_task(connect_tcp_and_read(hass, host, port))
+    device_info = DeviceInfo(
+        identifiers={(DOMAIN, host)},
+        name=device_name,
+        manufacturer="HHC",
+        model="TCP Relay",
+    )
 
-    await hass.config_entries.async_forward_entry_setups(entry, ["switch"])
-    return True
+    switches = [RelaySwitch(hass, device_name, host, port, i, device_info) for i in range(8)]
+    async_add_entities(switches, True)
+    _LOGGER.info("Switches adicionados para %s", entry.data[CONF_HOST])
 
 async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
     """Keep TCP connection alive and read relay states every 0.5 seconds."""

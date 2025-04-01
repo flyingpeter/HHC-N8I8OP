@@ -38,7 +38,7 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
 
             while True:
                 # Send the "read" command
-                writer.write(b"read\n")
+                writer.write(b"read\r\n")
                 await writer.drain()
 
                 # Receive response

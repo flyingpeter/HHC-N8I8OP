@@ -11,15 +11,18 @@ async def async_setup(hass: HomeAssistant, config: ConfigType):
     _LOGGER.debug("Entering async_setup...")
 
     # No further action required as we are handling everything through async_setup_entry
-
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up relay switches from a config entry."""
     _LOGGER.debug("Entering async_setup_entry...")
 
-    # Log the entire entry data for debugging purposes
-    _LOGGER.debug(f"Config entry data: {entry.data}")
+    # Verificar os dados do entry para depuração
+    if entry.data:
+        _LOGGER.debug(f"Config entry data: {entry.data}")
+    else:
+        _LOGGER.error("No data found in the config entry.")
+        return False
 
     # Obtenha os parâmetros de configuração
     host = entry.data.get(CONF_HOST)
@@ -30,15 +33,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     _LOGGER.debug(f"Name: {name}")
     _LOGGER.debug(f"Port: {port}")
 
-    # Verifique se o host está disponível e faça algo com ele
-    if host:
-        _LOGGER.debug("Valid host found, proceeding with TCP Relay setup...")
-        # Continue o resto da lógica para configurar o TCP Relay
-        # Por enquanto, só vamos deixar o log funcionando
-    else:
-        _LOGGER.warning("No host found in the configuration entry.")
-    
-    # Log indicando que o processo foi completado
+    # Verifique se os parâmetros essenciais estão presentes
+    if not host:
+        _LOGGER.error("Host is required but was not found in the config entry.")
+        return False
+
+    _LOGGER.debug("Host found, proceeding with TCP Relay setup...")
+
+    # Simular uma operação ou qualquer lógica adicional, se necessário
+    try:
+        # Aqui pode vir a lógica para configurar o dispositivo ou se conectar via TCP
+        # Neste momento, vamos apenas registrar uma mensagem de depuração para testar a continuidade
+        _LOGGER.debug(f"Connecting to TCP Relay at {host}:{port}...")
+        # Caso haja mais lógica de setup, adicione aqui
+    except Exception as e:
+        _LOGGER.error(f"Error during setup: {e}")
+        return False
+
     _LOGGER.debug("Finished processing async_setup_entry.")
-    
     return True

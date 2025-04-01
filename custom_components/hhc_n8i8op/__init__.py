@@ -37,11 +37,14 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
             reader, writer = await asyncio.open_connection(host, port)
 
             while True:
-                # Send the "read" command
-                writer.write(b"read\r\n")
+                # Send the "read" command using the writer (async)
+                writer.write(b"read\n")
                 await writer.drain()
 
-                # Receive response
+                # Wait for a short time to ensure the device processes the request
+                await asyncio.sleep(0.5)
+
+                # Receive the response using the reader (async)
                 response = await reader.read(1024)
                 response_text = response.decode("utf-8").strip()
 
@@ -52,7 +55,8 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
                 _LOGGER.info("Received response: %s", response_text)
 
                 if response_text.startswith("relay"):
-                    relay_states = response_text[5:]  # Extract 8-digit state
+                    relay_states = response_text[5:]  # Extract relay state part
+                    _LOGGER.info("Relay states: %s", relay_states)
                     hass.states.async_set(f"{DOMAIN}.{host}_relays", relay_states)
 
                 await asyncio.sleep(0.5)  # Wait before next read
@@ -62,3 +66,4 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
 
         # Wait before retrying connection
         await asyncio.sleep(5)
+

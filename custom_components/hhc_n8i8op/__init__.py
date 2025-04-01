@@ -5,6 +5,7 @@ import socket
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.config_entries import ConfigEntry
 
 from .const import DOMAIN
 
@@ -12,8 +13,12 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the HHC N8I8OP TCP Relay integration."""
-    host = config.get(CONF_HOST)
-    port = config.get(CONF_PORT, 5000)  # Default to 5000 if no port provided
+    return True  # Return True since async_setup is required but we're handling setup through async_setup_entry
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up TCP Relay based on a config entry."""
+    host = entry.data[CONF_HOST]
+    port = entry.data.get(CONF_PORT, 5000)  # Default to 5000 if no port provided
 
     # Start the TCP connection task
     hass.loop.create_task(connect_tcp_and_read(host, port))

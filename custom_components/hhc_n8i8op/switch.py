@@ -70,6 +70,12 @@ class RelaySwitch(SwitchEntity):
 
     async def async_update(self):
         """Update the relay state based on the latest response."""
+        # Check the device status before proceeding
+        status = self._hass.states.get(f"{DOMAIN}.{self._host}_status")
+        if status and status.state == "unavailable":
+            self._state = False  # If device is unavailable, mark switch off
+            return
+
         state = self._hass.states.get(f"{DOMAIN}.{self._host}_relays")
         if state and state.state.startswith("relay"):
             relay_states = state.state[5:]  # Extract 8-digit state

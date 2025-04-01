@@ -1,4 +1,5 @@
 import logging
+import asyncio
 import socket
 
 from homeassistant.components.switch import SwitchEntity
@@ -59,11 +60,19 @@ class RelaySwitch(SwitchEntity):
     async def _send_command(self, value):
         """Send command to turn on/off the relay."""
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.connect((self._host, self._port))
-                command = f"set{self._relay_index + 1}{value}".encode("utf-8")
-                sock.sendall(command)
-                _LOGGER.info("Sent command: %s", command.decode("utf-8"))
+            # Use asyncio to handle socket communication asynchronously
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.setblocking(False)  # Set socket to non-blocking mode
+
+            loop = asyncio.get_event_loop()
+
+            await loop.sock_connect(sock, (self._host, self._port))  # Connect asynchronously
+
+            command = f"set{self._relay_index + 1}{value}".encode("utf-8")
+            await loop.sock_sendall(sock, command)  # Send command asynchronously
+            _LOGGER.info("Sent command: %s", command.decode("utf-8"))
+
+            sock.close()  # Close the socket after sending the command
 
         except Exception as e:
             _LOGGER.error("Error sending command to %s:%d - %s", self._host, self._port, e)

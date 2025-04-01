@@ -1,10 +1,9 @@
 import logging
-import asyncio
 import socket
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.const import CONF_HOST, CONF_PORT
 
 from .const import DOMAIN
@@ -19,15 +18,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     device_name = host  # Default name is the IP
 
     # Create 8 relay entities
-    _LOGGER.debug("Creating relay switches for host %s with port %d", host, port)
     switches = [RelaySwitch(hass, device_name, host, port, i) for i in range(8)]
-    
-    # Log the created switches
-    _LOGGER.debug("Created relay switches: %s", [switch.name for switch in switches])
-
-    # Add the switches to Home Assistant
     async_add_entities(switches, True)
-    _LOGGER.debug("Switch entities added to Home Assistant.")
 
 class RelaySwitch(SwitchEntity):
     """Representation of a TCP relay switch."""
@@ -67,19 +59,11 @@ class RelaySwitch(SwitchEntity):
     async def _send_command(self, value):
         """Send command to turn on/off the relay."""
         try:
-            # Use asyncio to handle socket communication asynchronously
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.setblocking(False)  # Set socket to non-blocking mode
-
-            loop = asyncio.get_event_loop()
-
-            await loop.sock_connect(sock, (self._host, self._port))  # Connect asynchronously
-
-            command = f"set{self._relay_index + 1}{value}".encode("utf-8")
-            await loop.sock_sendall(sock, command)  # Send command asynchronously
-            _LOGGER.info("Sent command: %s", command.decode("utf-8"))
-
-            sock.close()  # Close the socket after sending the command
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.connect((self._host, self._port))
+                command = f"set{self._relay_index + 1}{value}".encode("utf-8")
+                sock.sendall(command)
+                _LOGGER.info("Sent command: %s", command.decode("utf-8"))
 
         except Exception as e:
             _LOGGER.error("Error sending command to %s:%d - %s", self._host, self._port, e)

@@ -39,7 +39,7 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
             while True:
                 try:
                     # Test a different command (e.g., status) to see if the device returns anything new
-                    test_command = b"status\n"
+                    test_command = b"read\n"
                     _LOGGER.debug(f"Sending command: {test_command.decode('utf-8')}")
                     writer.write(test_command)
                     await writer.drain()  # Ensure the data is sent
@@ -48,8 +48,12 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
                     response = await asyncio.wait_for(reader.read(1024), timeout=10.0)  # 10-second timeout
                     _LOGGER.debug("Raw response (before decode): %s", response)
 
-                    response_text = response.decode("utf-8").strip()
-                    _LOGGER.info("Decoded response: %s", response_text)
+                    try:
+                        response_text = response.decode("utf-8").strip()
+                        _LOGGER.info("Decoded response: %s", response_text)
+                    except UnicodeDecodeError as e:
+                        _LOGGER.error("Failed to decode response: %s", e)
+                        continue
 
                     if not response_text:
                         _LOGGER.warning("Empty response from %s", host)
@@ -71,9 +75,13 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
                     _LOGGER.warning("Timeout waiting for response from %s", host)
                     # Retry or handle the error
 
+                except (OSError, asyncio.CancelledError) as e:
+                    _LOGGER.error("Error while communicating with %s:%d - %s", host, port, e)
+                    break  # Break out of the inner loop to reconnect
+
         except (OSError, asyncio.TimeoutError) as e:
             _LOGGER.error("Connection error to %s:%d - %s", host, port, e)
 
         # Wait before retrying connection
+        _LOGGER.info("Waiting before retrying connection to %s:%d...", host, port)
         await asyncio.sleep(5)
-

@@ -8,7 +8,7 @@ from homeassistant.helpers.update_coordinator import (
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 
-DOMAIN = "tcp_relay"
+DOMAIN = "hhc_n8i8op"
 INTERVAL = 0.5  # Poll every 0.5s
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):

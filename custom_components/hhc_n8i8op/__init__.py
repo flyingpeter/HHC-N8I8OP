@@ -35,6 +35,8 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
             _LOGGER.debug("Connecting to %s:%d...", host, port)
             reader, writer = await asyncio.open_connection(host, port)
 
+            _LOGGER.debug("Successfully connected to %s:%d", host, port)
+
             while True:
                 try:
                     # Send the "read" command using the writer (async)
@@ -46,14 +48,12 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
                     response = await asyncio.wait_for(reader.read(1024), timeout=10.0)  # 10-second timeout
                     _LOGGER.debug("Raw response (before decode): %s", response)
 
-                    response_text = response.decode("utf-8").strip()
-                    _LOGGER.info("Decoded response: %s", response_text)
-
-                    if not response_text:
+                    if not response:
                         _LOGGER.warning("Empty response from %s", host)
                         break  # Reconnect if empty
 
-                    _LOGGER.info("Received response: %s", response_text)
+                    response_text = response.decode("utf-8").strip()
+                    _LOGGER.info("Decoded response: %s", response_text)
 
                     # Check if the response starts with "relay"
                     if response_text.startswith("relay"):
@@ -67,11 +67,9 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
 
                 except asyncio.TimeoutError:
                     _LOGGER.warning("Timeout waiting for response from %s", host)
-                    # Retry or handle the error
 
         except (OSError, asyncio.TimeoutError) as e:
             _LOGGER.error("Connection error to %s:%d - %s", host, port, e)
 
         # Wait before retrying connection
         await asyncio.sleep(5)
-

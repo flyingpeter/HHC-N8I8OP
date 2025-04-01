@@ -18,13 +18,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up TCP Relay based on a config entry."""
     host = entry.data[CONF_HOST]
-    port = entry.data.get(CONF_PORT, 5000)  # Default to 5000 if no port provided
+    port = entry.data.get(CONF_PORT, 5000)
 
     # Store the connection task in hass.data
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = asyncio.create_task(connect_tcp_and_read(hass, host, port))
 
-    # Setup switches
+    # Forward the setup to the switch platform
     await hass.config_entries.async_forward_entry_setups(entry, "switch")
 
     return True

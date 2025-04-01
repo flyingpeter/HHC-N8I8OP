@@ -5,6 +5,6 @@
   "documentation": "https://github.com/flyingpeter/HHC-N8I8OP/",
   "dependencies": [],
   "codeowners": ["@flyingpeter"],
-  "requirements": []
+  "requirements": [],
   "config_flow": true
 }

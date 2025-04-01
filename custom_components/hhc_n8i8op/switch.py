@@ -60,12 +60,13 @@ class RelaySwitch(SwitchEntity):
         return self._state
 
     async def async_turn_on(self, **kwargs):
-        """Turn the relay on."""
-        await self._send_command(1)
+        """Turn the relay on and update state."""
+        await self._send_command(self._relay_index, 1)  # ✅ Fix: Pass relay_index
 
     async def async_turn_off(self, **kwargs):
-        """Turn the relay off."""
-        await self._send_command(0)
+        """Turn the relay off and update state."""
+        await self._send_command(self._relay_index, 0)  # ✅ Fix: Pass relay_index
+
 
     async def _send_command(self, relay_index, value):
         """Send the full 8-relay command to the TCP relay."""

@@ -71,7 +71,7 @@ class RelaySwitch(SwitchEntity):
         """Send command to turn on/off the relay."""
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.connect((self._host, self._port
+                sock.connect((self._host, self._port)
                 state = self._hass.states.get(f"{DOMAIN}.{self._host}_relays")
                 if state and state.state.startswith("relay"):
                     relay_states = list(state.state[5:])  # Convert string to list
@@ -82,7 +82,8 @@ class RelaySwitch(SwitchEntity):
                 relay_states[relay_index] = str(value)
         
                 # Create the full command string
-                command = f"all{''.join(relay_states)}".encode("utf-8")             
+                command = f"all{''.join(relay_states)}".encode("utf-8")
+                _LOGGER.error(command)
                 sock.sendall(command)
                 _LOGGER.info("Sent command: %s", command.decode("utf-8"))
 

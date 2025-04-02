@@ -41,7 +41,7 @@ async def connect_tcp_and_read(hass: HomeAssistant, entry_id: str, host: str, po
     """Keep TCP connection alive and wait for incoming messages asynchronously."""
     while True:
         try:
-            _LOGGER.debug("Connecting to %s:%d...", host, port)
+            _LOGGER.info("Connecting to %s:%d...", host, port)
 
             loop = asyncio.get_event_loop()
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -57,10 +57,14 @@ async def connect_tcp_and_read(hass: HomeAssistant, entry_id: str, host: str, po
                         break  # Reconectar
 
                     response_text = response.decode("utf-8").strip()
-                    _LOGGER.info("LASTTIME UPDATED")
+                    _LOGGER.info("Received data: %s", response_text)
 
-                    # Atualiza o last_heartbeat para qualquer mensagem recebida
-                    hass.data[DOMAIN][entry_id]["last_heartbeat"] = time.time()
+                    # Verifica se o entry_id ainda está em hass.data antes de atualizar
+                    if entry_id in hass.data[DOMAIN]:
+                        _LOGGER.info("Updating last_heartbeat for %s", entry_id)
+                        hass.data[DOMAIN][entry_id]["last_heartbeat"] = time.time()
+                    else:
+                        _LOGGER.warning("Entry %s not found in hass.data!", entry_id)
 
                     # Atualiza estado de disponibilidade
                     hass.states.async_set(f"{DOMAIN}.{host}_availability", "available")
@@ -68,9 +72,6 @@ async def connect_tcp_and_read(hass: HomeAssistant, entry_id: str, host: str, po
                     if response_text.startswith("relay"):
                         relay_states = response_text[5:]  # Extrai estado do relé
                         _LOGGER.info("Relay states: %s", relay_states)
-
-                        # Atualiza estado dos relés no HA
-                        # hass.states.async_set(f"{DOMAIN}.{host}_relays", relay_states)
 
                 except asyncio.CancelledError:
                     raise  # Cancela corretamente a tarefa
@@ -92,14 +93,17 @@ async def connect_tcp_and_read(hass: HomeAssistant, entry_id: str, host: str, po
 async def monitor_availability(hass: HomeAssistant):
     """Monitor device availability based on heartbeat timestamps."""
     while True:
+        current_time = time.time()
+        
         for entry_id, device in list(hass.data.get(DOMAIN, {}).items()):
             if not isinstance(device, dict):  # Ignora tasks armazenadas no hass.data
                 continue
 
             last_heartbeat = device.get("last_heartbeat", 0)
-            _LOGGER.error(last_heartbeat)
+            _LOGGER.info("Checking availability for %s: last_heartbeat=%s, current_time=%s", 
+                         entry_id, last_heartbeat, current_time)
 
-            if time.time() - last_heartbeat > 30:  # Sem resposta por mais de 30s
+            if current_time - last_heartbeat > 30:  # Sem resposta por mais de 30s
                 _LOGGER.warning("Device %s is unavailable", entry_id)
                 hass.states.async_set(f"{DOMAIN}.{entry_id}_availability", "unavailable")
 

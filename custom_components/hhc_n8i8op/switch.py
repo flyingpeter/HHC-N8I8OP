@@ -19,9 +19,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     # Create device information
     device_info = {
         "identifiers": {(DOMAIN, host)},  # Unique identifier for the device
-        "name": f"TCP Relay ({host})",    # Device name
+        "name": f"Relay Module ({host})",    # Device name
         "manufacturer": "HHC",
-        "model": "TCP Relay",
+        "model": "N8I8OP",
         "sw_version": "1.0",              # Firmware version (if available)
     }
 

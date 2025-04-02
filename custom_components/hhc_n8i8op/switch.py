@@ -80,19 +80,14 @@ class RelaySwitch(SwitchEntity):
                 for i in range(8):  # For relays 0 to 7
                     entity_id = f"switch.relay_{i+1}_{host_replacement}"  # Use self._host here too
                     relay_state = self._hass.states.get(entity_id)
-                    _LOGGER.error(relay_state)
-                    _LOGGER.error("here")
-                    _LOGGER.error(relay_state.state)
-                    
-                    if relay_state.state == 1:  # Ensure relay_state exists before accessing it
+
+                    if relay_state.state == "on":  # Ensure relay_state exists before accessing it
                         # Append 1 for ON, 0 for OFF
-                        command += "1" if relay_state.state == "on" else "0"
+                        command += "1"
                     else:
-                        _LOGGER.error("Relay state for %s not found, defaulting to OFF", entity_id)
                         command += "0"  # Default to 0 if state is not found
-    
-                _LOGGER.error("Command to send: %s", command)  # Log the command to send
-                sock.sendall(command.encode("utf-8"))  # Ensure you encode the string before sending
+                        
+                sock.sendall(command)  # Ensure you encode the string before sending
                 _LOGGER.info("Sent command: %s", command)  # Log after sending the command
     
         except Exception as e:

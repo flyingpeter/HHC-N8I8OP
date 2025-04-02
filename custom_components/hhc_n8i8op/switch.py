@@ -73,16 +73,16 @@ class RelaySwitch(SwitchEntity):
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 sock.connect((self._host, self._port))
                 state = self._hass.states.get(f"{DOMAIN}.{self._host}_relays")
-                if state and state.state.startswith("relay"):
-                    relay_states = list(state.state[5:])  # Convert string to list
-                else:
-                    relay_states = ["0"] * 8  # Default: all off
+
+                command = "all"
+    
+                for i in range(8):  # For relays 0 to 7
+                    entity_id = f"switch.relay_{i+1}_{host}"
+                    relay_state = hass.states.get(entity_id).state
+                    
+                    # Append 1 for ON, 0 for OFF
+                    command += "1" if relay_state == "on" else "0"
         
-                # Update the specific relay
-                relay_states[relay_index] = str(value)
-        
-                # Create the full command string
-                command = f"all{''.join(relay_states)}".encode("utf-8")
                 _LOGGER.error(command)
                 sock.sendall(command)
                 _LOGGER.info("Sent command: %s", command.decode("utf-8"))

@@ -74,9 +74,9 @@ class RelaySwitch(SwitchEntity):
                 sock.connect((self._host, self._port))  # Use self._host, not host
                 state = self._hass.states.get(f"{DOMAIN}.{self._host}_relays")
 
-                host_replacement = {self.host}.replace(".","_")
+                host_replacement = self._host.replace(".", "_")  # Correct the replacement here
                 command = "all"
-        
+                
                 for i in range(8):  # For relays 0 to 7
                     entity_id = f"switch.relay_{i+1}_{host_replacement}"  # Use self._host here too
                     _LOGGER.error(entity_id)

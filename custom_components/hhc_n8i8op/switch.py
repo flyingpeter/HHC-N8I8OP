@@ -68,39 +68,30 @@ class RelaySwitch(SwitchEntity):
         """Turn the relay off."""
         await self._send_command(0)
 
-    async def _send_command(self, value):
+        async def _send_command(self, value):
         """Send command to turn on/off the relay."""
         try:
-            # Use asyncio.open_connection to make the socket connection non-blocking
-            reader, writer = await asyncio.open_connection(self._host, self._port)
-    
-            state = self._hass.states.get(f"{DOMAIN}.{self._host}_relays")
-    
-            host_replacement = self._host.replace(".", "_")  # Correct the replacement here
-            command = "all"
-            
-            for i in range(8):  # For relays 0 to 7
-                entity_id = f"switch.relay_{i+1}_{host_replacement}"  # Use self._host here too
-                relay_state = self._hass.states.get(entity_id)
-    
-                if relay_state.state == "on":  # Ensure relay_state exists before accessing it
-                    # Append 1 for ON, 0 for OFF
-                    command += "1"
-                else:
-                    command += "0"  # Default to 0 if state is not found
-    
-            # Send the command to the remote device
-            writer.write(command.encode())  # Use writer.write for asyncio
-            await writer.drain()  # Ensure the data is sent before continuing
-            _LOGGER.info("Sent command: %s", command)  # Log after sending the command
-    
-            writer.close()  # Close the connection after sending the data
-            await writer.wait_closed()  # Ensure the connection is fully closed
-    
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.connect((self._host, self._port))  # Use self._host, not host
+                state = self._hass.states.get(f"{DOMAIN}.{self._host}_relays")
+
+                host_replacement = self._host.replace(".", "_")  # Correct the replacement here
+                command = "all"
+                
+                for i in range(8):  # For relays 0 to 7
+                    entity_id = f"switch.relay_{i+1}_{host_replacement}"  # Use self._host here too
+                    relay_state = self._hass.states.get(entity_id)
+
+                    if relay_state.state == "on":  # Ensure relay_state exists before accessing it
+                        # Append 1 for ON, 0 for OFF
+                        command += "1"
+                    else:
+                        command += "0"  # Default to 0 if state is not found
+                _LOGGER.error(command)
+                sock.sendall(command.encode())  # Ensure you encode the string before sending
+
         except Exception as e:
             _LOGGER.error("Error sending command to %s:%d - %s", self._host, self._port, e)
-            except Exception as e:
-                _LOGGER.error("Error sending command to %s:%d - %s", self._host, self._port, e)
     
 
     async def async_update(self):

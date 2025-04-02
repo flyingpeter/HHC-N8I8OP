@@ -90,6 +90,7 @@ class RelaySwitch(SwitchEntity):
         except Exception as e:
             _LOGGER.error("Error sending command to %s:%d - %s", self._host, self._port, e)
 
+
     async def async_update(self):
         """Update the relay state based on the latest response."""
         state = self._hass.states.get(f"{DOMAIN}.{self._host}_relays")

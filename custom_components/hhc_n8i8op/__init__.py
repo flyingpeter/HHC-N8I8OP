@@ -65,7 +65,7 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
                         _LOGGER.info("Relay states: %s", relay_states)
 
                         # Update the state of the relay in Home Assistant
-                        hass.states.async_set(f"{DOMAIN}.{host}_relays", relay_states)
+                        #hass.states.async_set(f"{DOMAIN}.{host}_relays", relay_states)
 
                     await asyncio.sleep(0.5)  # Wait before next read (non-blocking)
 

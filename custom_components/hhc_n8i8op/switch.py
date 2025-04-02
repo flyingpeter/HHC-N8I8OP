@@ -78,10 +78,14 @@ class RelaySwitch(SwitchEntity):
         
                 for i in range(8):  # For relays 0 to 7
                     entity_id = f"switch.relay_{i+1}_{self._host}"  # Use self._host here too
-                    relay_state = self._hass.states.get(entity_id).state
+                    relay_state = self._hass.states.get(entity_id)
                     
-                    # Append 1 for ON, 0 for OFF
-                    command += "1" if relay_state == "on" else "0"
+                    if relay_state is not None:  # Ensure relay_state exists before accessing it
+                        # Append 1 for ON, 0 for OFF
+                        command += "1" if relay_state.state == "on" else "0"
+                    else:
+                        _LOGGER.error("Relay state for %s not found, defaulting to OFF", entity_id)
+                        command += "0"  # Default to 0 if state is not found
     
                 _LOGGER.error("Command to send: %s", command)  # Log the command to send
                 sock.sendall(command.encode("utf-8"))  # Ensure you encode the string before sending
@@ -89,6 +93,7 @@ class RelaySwitch(SwitchEntity):
     
         except Exception as e:
             _LOGGER.error("Error sending command to %s:%d - %s", self._host, self._port, e)
+
 
 
     async def async_update(self):

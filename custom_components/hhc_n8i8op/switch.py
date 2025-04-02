@@ -87,8 +87,8 @@ class RelaySwitch(SwitchEntity):
                         command += "1"
                     else:
                         command += "0"  # Default to 0 if state is not found
-                _LOGGER.error(command)
-                sock.sendall(command.encode())  # Ensure you encode the string before sending
+                        
+                sock.sendall(command)  # Ensure you encode the string before sending
 
         except Exception as e:
             _LOGGER.error("Error sending command to %s:%d - %s", self._host, self._port, e)

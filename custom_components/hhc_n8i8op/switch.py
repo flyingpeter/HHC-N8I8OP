@@ -42,7 +42,7 @@ class RelaySwitch(SwitchEntity):
         self._relay_index = relay_index
         self._state = False
 
-        # ✅ Associate entity with the device
+        # Associate entity with the device
         self._attr_device_info = device_info
 
     @property
@@ -88,12 +88,11 @@ class RelaySwitch(SwitchEntity):
                     else:
                         command += "0"  # Default to 0 if state is not found
                         
-                sock.sendall(command)  # Ensure you encode the string before sending
+                sock.sendall(command.encode())  # Ensure you encode the string before sending
 
         except Exception as e:
             _LOGGER.error("Error sending command to %s:%d - %s", self._host, self._port, e)
     
-
     async def async_update(self):
         """Update the relay state based on the latest response."""
         state = self._hass.states.get(f"{DOMAIN}.{self._host}_relays")

@@ -1,6 +1,9 @@
 THIS INTEGRATION IS IN BETA MODE
 
-Just add to your configuration.yaml:
+1) Add via HACS the repo "https://github.com/flyingpeter/homeassistant/"
+2) Download the Zip with the manufactor documentation and software.
+3) Execute setup tool and replicate the sample setup (check image).
+4) Add the Module in Devices, Search for TCP Relay and just type the module IP
+5) Enjoy! =)
 
-hhc_n8i8op:
-  host: 192.168.0.105
+   NOTE: The INPUTS are a work in progress. The relays are working fine in my Home Assistant

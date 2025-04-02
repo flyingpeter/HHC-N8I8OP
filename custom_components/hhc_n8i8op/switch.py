@@ -76,9 +76,6 @@ class RelaySwitch(SwitchEntity):
                 sock.connect((self._host, self._port))  # Use self._host, not host
                 sock.sendall(command.encode())  # Send command, e.g., "on1"
 
-                # Log the command sent
-                _LOGGER.info("Sent command: %s", command)
-
                 # Set the state of the relay based on the action
                 self._state = action == "on"
 

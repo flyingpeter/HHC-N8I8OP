@@ -4,7 +4,7 @@ import socket
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.const import CONF_HOST, CONF_PORT  # Make sure these imports are here
 
 from .const import DOMAIN
 
@@ -41,39 +41,31 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
                 try:
                     # Send the command to the device
                     test_command = b"read"
+                    #_LOGGER.debug(f"Sending command: {test_command.decode('utf-8')}")
                     sock.sendall(test_command)
 
                     # Receive the response from the device
                     sock.settimeout(10)  # Set a timeout of 10 seconds for blocking socket read
                     response = sock.recv(1024)  # Adjust buffer size as needed
+                    #_LOGGER.debug("Raw response (before decode): %s", response)
 
                     if not response:
-                        _LOGGER.warning("Empty response from %s", host)
+                        #_LOGGER.warning("Empty response from %s", host)
                         break  # Reconnect if empty response
 
                     try:
-                        response_text = response.decode("utf-8").replace("relay", "").strip()
-                        
-                        # Loop through the relays (assuming the response length matches the number of relays)
-                        for i, state in enumerate(response_text):
-                            relay_state = "on" if state == "1" else "off"  # Determine relay state based on the response
-                            
-                            # Construct the entity_id with the correct format for Home Assistant
-                            host_replacement = host.replace(".", "_")  # Replacing periods with underscores
-                            entity_id = f"switch.relay_{i + 1}_{host_replacement}"
-                            
-                            # Get the current state of the relay switch in Home Assistant
-                            current_state = hass.states.get(entity_id)
-                            
-                            # Check if the state needs to be updated
-                            if current_state and current_state.state != relay_state:
-                                # Update the state to the new value
-                                await hass.services.async_call(
-                                    "homeassistant", "turn_" + relay_state, {"entity_id": entity_id}
-                                )
-                                _LOGGER.info(f"Updated {entity_id} state to {relay_state}")
-                    except Exception as e:
-                        _LOGGER.error("Error updating relay states: %s", e)
+                        response_text = response.decode("utf-8").strip()
+                        #_LOGGER.info("Decoded response: %s", response_text)
+                    except UnicodeDecodeError as e:
+                        _LOGGER.error("Failed to decode response: %s", e)
+                        continue
+
+                    if response_text.startswith("relay"):
+                        relay_states = response_text[5:]  # Extract relay state part
+                        _LOGGER.info("Relay states: %s", relay_states)
+
+                        # Update the state of the relay in Home Assistant
+                        hass.states.async_set(f"{DOMAIN}.{host}_relays", relay_states)
 
                     await asyncio.sleep(0.5)  # Wait before next read (non-blocking)
 

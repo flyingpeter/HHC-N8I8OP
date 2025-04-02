@@ -68,7 +68,7 @@ class RelaySwitch(SwitchEntity):
         """Turn the relay off."""
         await self._send_command(0)
 
-        async def _send_command(self, value):
+    async def _send_command(self, value):
         """Send command to turn on/off the relay."""
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:

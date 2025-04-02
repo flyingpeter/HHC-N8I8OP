@@ -80,6 +80,8 @@ class RelaySwitch(SwitchEntity):
                 for i in range(8):  # For relays 0 to 7
                     entity_id = f"switch.relay_{i+1}_{host_replacement}"  # Use self._host here too
                     relay_state = self._hass.states.get(entity_id)
+                    _LOGGER.error(relay_state)
+                    _LOGGER.error("here")
                     _LOGGER.error(relay_state.state)
                     
                     if relay_state.state == 1:  # Ensure relay_state exists before accessing it

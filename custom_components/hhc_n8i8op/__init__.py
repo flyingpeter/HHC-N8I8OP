@@ -4,7 +4,7 @@ import socket
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PORT  # Make sure these imports are here
+from homeassistant.const import CONF_HOST, CONF_PORT  # Ensure these imports are here
 
 from .const import DOMAIN
 
@@ -29,20 +29,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
-    """Keep TCP connection alive and wait for incoming messages."""
+    """Keep TCP connection alive and wait for incoming messages asynchronously."""
     while True:
         try:
             _LOGGER.debug("Connecting to %s:%d...", host, port)
-            # Create a socket and connect
+
+            # Use asyncio's event loop to create a non-blocking socket
+            loop = asyncio.get_event_loop()
+
+            # Create a socket and connect asynchronously
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((host, port))
+            sock.setblocking(False)  # Set socket to non-blocking mode
+            await loop.sock_connect(sock, (host, port))  # Connect to the server asynchronously
 
             while True:
                 try:
-                    # Wait to receive data from the device
-                    sock.settimeout(10)  # Set a timeout of 10 seconds for blocking socket read
-                    response = sock.recv(1024)  # Adjust buffer size as needed
-                    #_LOGGER.debug("Raw response (before decode): %s", response)
+                    # Wait to receive data asynchronously from the device
+                    response = await loop.sock_recv(sock, 1024)  # Adjust buffer size as needed
 
                     if not response:
                         _LOGGER.warning("Empty response from %s", host)
@@ -65,9 +68,8 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
 
                     await asyncio.sleep(0.5)  # Wait before next read (non-blocking)
 
-                except socket.timeout:
-                    _LOGGER.warning("Timeout waiting for response from %s", host)
-                    continue  # Retry if timeout occurs
+                except asyncio.CancelledError:
+                    raise  # Handle cancellation gracefully
 
                 except (socket.error, OSError) as e:
                     _LOGGER.error("Error while communicating with %s:%d - %s", host, port, e)

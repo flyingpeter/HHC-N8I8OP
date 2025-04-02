@@ -29,7 +29,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
-    """Keep TCP connection alive and read relay states every 0.5 seconds."""
+    """Keep TCP connection alive and wait for incoming messages."""
     while True:
         try:
             _LOGGER.debug("Connecting to %s:%d...", host, port)
@@ -39,33 +39,29 @@ async def connect_tcp_and_read(hass: HomeAssistant, host: str, port: int):
 
             while True:
                 try:
-                    # Send the command to the device
-                    test_command = b"read"
-                    #_LOGGER.debug(f"Sending command: {test_command.decode('utf-8')}")
-                    sock.sendall(test_command)
-
-                    # Receive the response from the device
+                    # Wait to receive data from the device
                     sock.settimeout(10)  # Set a timeout of 10 seconds for blocking socket read
                     response = sock.recv(1024)  # Adjust buffer size as needed
                     #_LOGGER.debug("Raw response (before decode): %s", response)
 
                     if not response:
-                        #_LOGGER.warning("Empty response from %s", host)
+                        _LOGGER.warning("Empty response from %s", host)
                         break  # Reconnect if empty response
 
                     try:
                         response_text = response.decode("utf-8").strip()
-                        #_LOGGER.info("Decoded response: %s", response_text)
+                        _LOGGER.info("Decoded response: %s", response_text)
+
+                        if response_text.startswith("relay"):
+                            relay_states = response_text[5:]  # Extract relay state part
+                            _LOGGER.info("Relay states: %s", relay_states)
+
+                            # Update the state of the relay in Home Assistant
+                            # hass.states.async_set(f"{DOMAIN}.{host}_relays", relay_states)
+
                     except UnicodeDecodeError as e:
                         _LOGGER.error("Failed to decode response: %s", e)
                         continue
-
-                    if response_text.startswith("relay"):
-                        relay_states = response_text[5:]  # Extract relay state part
-                        _LOGGER.info("Relay states: %s", relay_states)
-
-                        # Update the state of the relay in Home Assistant
-                        #hass.states.async_set(f"{DOMAIN}.{host}_relays", relay_states)
 
                     await asyncio.sleep(0.5)  # Wait before next read (non-blocking)
 

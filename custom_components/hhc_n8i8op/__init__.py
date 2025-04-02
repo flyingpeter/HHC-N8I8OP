@@ -26,6 +26,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry_id] = {
         "task": asyncio.create_task(connect_tcp_and_read(hass, entry_id, host, port)),
         "last_heartbeat": time.time(),
+        "failure_count": 0,  # Contador de falhas de conexão
     }
 
     # Inicia monitoramento de disponibilidade uma única vez
@@ -46,6 +47,8 @@ async def connect_tcp_and_read(hass: HomeAssistant, entry_id: str, host: str, po
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.setblocking(False)
             await loop.sock_connect(sock, (host, port))
+            
+            hass.data[DOMAIN][entry_id]["failure_count"] = 0  # Reset contador de falhas
             
             while True:
                 try:
@@ -77,9 +80,11 @@ async def connect_tcp_and_read(hass: HomeAssistant, entry_id: str, host: str, po
 
         except (socket.error, OSError) as e:
             _LOGGER.error("Connection error to %s:%d - %s", host, port, e)
+            hass.data[DOMAIN][entry_id]["failure_count"] += 1  # Incrementa falhas
 
-        _LOGGER.info("Waiting before retrying connection to %s:%d...", host, port)
-        await asyncio.sleep(5)
+        wait_time = min(5 * hass.data[DOMAIN][entry_id]["failure_count"], 60)  # Aumenta o tempo de espera até 60s
+        _LOGGER.info("Waiting %d seconds before retrying connection to %s:%d...", wait_time, host, port)
+        await asyncio.sleep(wait_time)
 
 async def monitor_availability(hass: HomeAssistant):
     """Monitor device availability based on heartbeat timestamps."""
@@ -97,4 +102,4 @@ async def monitor_availability(hass: HomeAssistant):
                 _LOGGER.warning("Device %s is unavailable", entry_id)
                 hass.states.async_set(f"{DOMAIN}.{entry_id}_availability", "unavailable")
 
-        await asyncio.sleep(5)
+        await asyncio.sleep(10)  # Verifica a cada 10 segundos para reduzir a carga

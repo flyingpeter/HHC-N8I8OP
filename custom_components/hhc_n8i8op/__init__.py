@@ -57,7 +57,7 @@ async def connect_tcp_and_read(hass: HomeAssistant, entry_id: str, host: str, po
                         break  # Reconectar
 
                     response_text = response.decode("utf-8").strip()
-                    _LOGGER.info("Decoded response: %s", response_text)
+                    _LOGGER.info("LASTTIME UPDATED")
 
                     # Atualiza o last_heartbeat para qualquer mensagem recebida
                     hass.data[DOMAIN][entry_id]["last_heartbeat"] = time.time()
@@ -97,6 +97,7 @@ async def monitor_availability(hass: HomeAssistant):
                 continue
 
             last_heartbeat = device.get("last_heartbeat", 0)
+            _LOGGER.error(last_heartbeat)
 
             if time.time() - last_heartbeat > 30:  # Sem resposta por mais de 30s
                 _LOGGER.warning("Device %s is unavailable", entry_id)

@@ -71,22 +71,22 @@ class RelaySwitch(SwitchEntity):
         """Send command to turn on/off the relay."""
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.connect((self._host, self._port))
+                sock.connect((self._host, self._port))  # Use self._host, not host
                 state = self._hass.states.get(f"{DOMAIN}.{self._host}_relays")
-
-                command = "all"
     
+                command = "all"
+        
                 for i in range(8):  # For relays 0 to 7
-                    entity_id = f"switch.relay_{i+1}_{host}"
-                    relay_state = hass.states.get(entity_id).state
+                    entity_id = f"switch.relay_{i+1}_{self._host}"  # Use self._host here too
+                    relay_state = self._hass.states.get(entity_id).state
                     
                     # Append 1 for ON, 0 for OFF
                     command += "1" if relay_state == "on" else "0"
-        
-                _LOGGER.error(command)
-                sock.sendall(command)
-                _LOGGER.info("Sent command: %s", command.decode("utf-8"))
-
+    
+                _LOGGER.error("Command to send: %s", command)  # Log the command to send
+                sock.sendall(command.encode("utf-8"))  # Ensure you encode the string before sending
+                _LOGGER.info("Sent command: %s", command)  # Log after sending the command
+    
         except Exception as e:
             _LOGGER.error("Error sending command to %s:%d - %s", self._host, self._port, e)
 
